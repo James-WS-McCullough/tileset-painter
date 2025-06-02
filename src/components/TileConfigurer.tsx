@@ -318,8 +318,11 @@ export function TileConfigurer({
     setSelectedNoiseTiles([]);
   };
 
-  const updateMaterialNoiseProbability = (materialId: string, probability: number) => {
-    const updatedMaterials = config.materials.map(material =>
+  const updateMaterialNoiseProbability = (
+    materialId: string,
+    probability: number
+  ) => {
+    const updatedMaterials = config.materials.map((material) =>
       material.id === materialId
         ? { ...material, noiseProbability: probability }
         : material
@@ -334,7 +337,7 @@ export function TileConfigurer({
   const removeNoiseTile = (noiseId: string) => {
     const updatedConfig = {
       ...config,
-      noise: config.noise.filter(n => n.id !== noiseId),
+      noise: config.noise.filter((n) => n.id !== noiseId),
     };
     onConfigChange(updatedConfig);
   };
@@ -797,10 +800,15 @@ export function TileConfigurer({
                 <div className="space-y-6">
                   {/* Material-based noise configuration */}
                   {config.materials.map((material) => {
-                    const materialNoise = config.noise.filter(n => n.baseMaterial === material.id);
-                    
+                    const materialNoise = config.noise.filter(
+                      (n) => n.baseMaterial === material.id
+                    );
+
                     return (
-                      <div key={material.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                      <div
+                        key={material.id}
+                        className="border border-gray-200 dark:border-gray-600 rounded-lg p-4"
+                      >
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                             {material.name}
@@ -822,7 +830,12 @@ export function TileConfigurer({
                             min="0"
                             max="100"
                             value={material.noiseProbability}
-                            onChange={(e) => updateMaterialNoiseProbability(material.id, Number(e.target.value))}
+                            onChange={(e) =>
+                              updateMaterialNoiseProbability(
+                                material.id,
+                                Number(e.target.value)
+                              )
+                            }
                             className="w-full"
                           />
                           <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -854,19 +867,33 @@ export function TileConfigurer({
                                       style={{ imageRendering: "pixelated" }}
                                       ref={(canvas) => {
                                         if (canvas && image.complete) {
-                                          const ctx = canvas.getContext("2d") as ExtendedCanvasRenderingContext2D;
+                                          const ctx = canvas.getContext(
+                                            "2d"
+                                          ) as ExtendedCanvasRenderingContext2D;
                                           if (ctx) {
                                             ctx.imageSmoothingEnabled = false;
-                                            if (ctx.webkitImageSmoothingEnabled !== undefined)
-                                              ctx.webkitImageSmoothingEnabled = false;
-                                            if (ctx.mozImageSmoothingEnabled !== undefined)
-                                              ctx.mozImageSmoothingEnabled = false;
-                                            if (ctx.msImageSmoothingEnabled !== undefined)
-                                              ctx.msImageSmoothingEnabled = false;
+                                            if (
+                                              ctx.webkitImageSmoothingEnabled !==
+                                              undefined
+                                            )
+                                              ctx.webkitImageSmoothingEnabled =
+                                                false;
+                                            if (
+                                              ctx.mozImageSmoothingEnabled !==
+                                              undefined
+                                            )
+                                              ctx.mozImageSmoothingEnabled =
+                                                false;
+                                            if (
+                                              ctx.msImageSmoothingEnabled !==
+                                              undefined
+                                            )
+                                              ctx.msImageSmoothingEnabled =
+                                                false;
 
                                             // Clear canvas first
                                             ctx.clearRect(0, 0, 32, 32);
-                                            
+
                                             // Draw the tile image scaled to 32x32
                                             ctx.drawImage(
                                               image,
@@ -901,13 +928,15 @@ export function TileConfigurer({
                           }}
                           className={`w-full flex items-center justify-center space-x-2 px-3 py-2 border-2 border-dashed rounded-lg font-medium transition-colors ${
                             noiseMaterial === material.id
-                              ? 'border-purple-400 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-900/20 dark:text-purple-300'
-                              : 'border-gray-300 text-gray-600 hover:border-purple-400 hover:text-purple-600 dark:border-gray-600 dark:text-gray-400'
+                              ? "border-purple-400 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-900/20 dark:text-purple-300"
+                              : "border-gray-300 text-gray-600 hover:border-purple-400 hover:text-purple-600 dark:border-gray-600 dark:text-gray-400"
                           }`}
                         >
                           <Plus className="w-4 h-4" />
                           <span>
-                            {noiseMaterial === material.id ? 'Click tiles to add noise' : 'Add Noise Tiles'}
+                            {noiseMaterial === material.id
+                              ? "Click tiles to add noise"
+                              : "Add Noise Tiles"}
                           </span>
                         </button>
                       </div>
@@ -919,7 +948,11 @@ export function TileConfigurer({
                     <div className="border border-purple-200 dark:border-purple-700 rounded-lg p-4 bg-purple-50 dark:bg-purple-900/20">
                       <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2">
                         Selected noise tiles for{" "}
-                        {config.materials.find((m) => m.id === noiseMaterial)?.name}:
+                        {
+                          config.materials.find((m) => m.id === noiseMaterial)
+                            ?.name
+                        }
+                        :
                       </p>
                       <div className="flex flex-wrap gap-1 mb-3">
                         {selectedNoiseTiles.map((tile, index) => (
@@ -941,19 +974,30 @@ export function TileConfigurer({
                                 style={{ imageRendering: "pixelated" }}
                                 ref={(canvas) => {
                                   if (canvas && image.complete) {
-                                    const ctx = canvas.getContext("2d") as ExtendedCanvasRenderingContext2D;
+                                    const ctx = canvas.getContext(
+                                      "2d"
+                                    ) as ExtendedCanvasRenderingContext2D;
                                     if (ctx) {
                                       ctx.imageSmoothingEnabled = false;
-                                      if (ctx.webkitImageSmoothingEnabled !== undefined)
+                                      if (
+                                        ctx.webkitImageSmoothingEnabled !==
+                                        undefined
+                                      )
                                         ctx.webkitImageSmoothingEnabled = false;
-                                      if (ctx.mozImageSmoothingEnabled !== undefined)
+                                      if (
+                                        ctx.mozImageSmoothingEnabled !==
+                                        undefined
+                                      )
                                         ctx.mozImageSmoothingEnabled = false;
-                                      if (ctx.msImageSmoothingEnabled !== undefined)
+                                      if (
+                                        ctx.msImageSmoothingEnabled !==
+                                        undefined
+                                      )
                                         ctx.msImageSmoothingEnabled = false;
 
                                       // Clear canvas first
                                       ctx.clearRect(0, 0, 32, 32);
-                                      
+
                                       // Draw the tile image scaled to 32x32
                                       ctx.drawImage(
                                         image,

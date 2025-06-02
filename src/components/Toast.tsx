@@ -129,17 +129,13 @@ function Toast({ toast, onRemove }: ToastProps) {
           : "translate-x-full opacity-0"
       }`}
     >
-      <div className={`flex-shrink-0 ${getIconColor()}`}>
-        {getIcon()}
-      </div>
+      <div className={`flex-shrink-0 ${getIconColor()}`}>{getIcon()}</div>
       <div className="ml-3 flex-1">
         <h4 className={`text-sm font-medium ${getTitleColor()}`}>
           {toast.title}
         </h4>
         {toast.message && (
-          <p className={`mt-1 text-sm ${getMessageColor()}`}>
-            {toast.message}
-          </p>
+          <p className={`mt-1 text-sm ${getMessageColor()}`}>{toast.message}</p>
         )}
       </div>
       <button

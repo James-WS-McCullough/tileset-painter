@@ -7,7 +7,18 @@ import {
   GridConfig,
   BaseMaterial,
 } from "@/types/tileset";
-import { Download, Trash2, Undo, Redo, Paintbrush, Square, Circle, PaintBucket, Save, Upload } from "lucide-react";
+import {
+  Download,
+  Trash2,
+  Undo,
+  Redo,
+  Paintbrush,
+  Square,
+  Circle,
+  PaintBucket,
+  Save,
+  Upload,
+} from "lucide-react";
 import { useToasts, ToastContainer } from "./Toast";
 
 type PaintingTool = "brush" | "rectangle" | "circle" | "fill";
@@ -94,7 +105,7 @@ function MaterialButton({
 
 export function TilePainter({ config }: TilePainterProps) {
   const { toasts, removeToast, showSuccess, showError } = useToasts();
-  
+
   const [gridConfig, setGridConfig] = useState<GridConfig>({
     width: 20,
     height: 15,
@@ -110,7 +121,10 @@ export function TilePainter({ config }: TilePainterProps) {
   const [isPainting, setIsPainting] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [currentTool, setCurrentTool] = useState<PaintingTool>("brush");
-  const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null);
+  const [drawingStart, setDrawingStart] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [previewTiles, setPreviewTiles] = useState<Set<string>>(new Set());
   const [history, setHistory] = useState<Map<string, PaintedTile>[]>([
     new Map(),
@@ -144,8 +158,8 @@ export function TilePainter({ config }: TilePainterProps) {
     canvas.height = canvasHeight;
 
     // Remove explicit style sizing - let CSS handle the display scaling
-    canvas.style.width = '';
-    canvas.style.height = '';
+    canvas.style.width = "";
+    canvas.style.height = "";
 
     // Clear canvas with background
     ctx.fillStyle = "#f3f4f6";
@@ -236,9 +250,9 @@ export function TilePainter({ config }: TilePainterProps) {
       const material = config.materials.find((m) => m.id === selectedMaterial);
       if (material) {
         ctx.globalAlpha = 0.6; // Make preview semi-transparent
-        
+
         previewTiles.forEach((tileKey) => {
-          const [x, y] = tileKey.split(',').map(Number);
+          const [x, y] = tileKey.split(",").map(Number);
           const destX = Math.round(x * gridConfig.tileSize.width);
           const destY = Math.round(y * gridConfig.tileSize.height);
 
@@ -254,11 +268,18 @@ export function TilePainter({ config }: TilePainterProps) {
             Math.round(gridConfig.tileSize.height)
           );
         });
-        
+
         ctx.globalAlpha = 1.0; // Reset opacity
       }
     }
-  }, [gridConfig, paintedTiles, config, previewTiles, isErasing, selectedMaterial]);
+  }, [
+    gridConfig,
+    paintedTiles,
+    config,
+    previewTiles,
+    isErasing,
+    selectedMaterial,
+  ]);
 
   // Load tileset image
   useEffect(() => {
@@ -326,7 +347,10 @@ export function TilePainter({ config }: TilePainterProps) {
   });
 
   // Get tiles in a rectangle between two points
-  const getRectangleTiles = (start: { x: number; y: number }, end: { x: number; y: number }) => {
+  const getRectangleTiles = (
+    start: { x: number; y: number },
+    end: { x: number; y: number }
+  ) => {
     const tiles: string[] = [];
     const minX = Math.min(start.x, end.x);
     const maxX = Math.max(start.x, end.x);
@@ -347,11 +371,17 @@ export function TilePainter({ config }: TilePainterProps) {
   const getCircleTiles = (center: { x: number; y: number }, radius: number) => {
     const tiles: string[] = [];
     const intRadius = Math.round(radius);
-    
+
     for (let x = center.x - intRadius; x <= center.x + intRadius; x++) {
       for (let y = center.y - intRadius; y <= center.y + intRadius; y++) {
         const distance = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2);
-        if (distance <= intRadius && x >= 0 && x < gridConfig.width && y >= 0 && y < gridConfig.height) {
+        if (
+          distance <= intRadius &&
+          x >= 0 &&
+          x < gridConfig.width &&
+          y >= 0 &&
+          y < gridConfig.height
+        ) {
           tiles.push(`${x},${y}`);
         }
       }
@@ -364,7 +394,7 @@ export function TilePainter({ config }: TilePainterProps) {
     const startKey = `${startX},${startY}`;
     const startTile = paintedTiles.get(startKey);
     const targetMaterial = startTile?.materialId || null;
-    
+
     const visited = new Set<string>();
     const tilesToFill: string[] = [];
     const queue: { x: number; y: number }[] = [{ x: startX, y: startY }];
@@ -374,10 +404,16 @@ export function TilePainter({ config }: TilePainterProps) {
       const key = `${current.x},${current.y}`;
 
       if (visited.has(key)) continue;
-      if (current.x < 0 || current.x >= gridConfig.width || current.y < 0 || current.y >= gridConfig.height) continue;
+      if (
+        current.x < 0 ||
+        current.x >= gridConfig.width ||
+        current.y < 0 ||
+        current.y >= gridConfig.height
+      )
+        continue;
 
       visited.add(key);
-      
+
       const currentTile = paintedTiles.get(key);
       const currentMaterial = currentTile?.materialId || null;
 
@@ -393,7 +429,7 @@ export function TilePainter({ config }: TilePainterProps) {
           { x: current.x, y: current.y - 1 },
         ];
 
-        adjacent.forEach(pos => {
+        adjacent.forEach((pos) => {
           const adjKey = `${pos.x},${pos.y}`;
           if (!visited.has(adjKey)) {
             queue.push(pos);
@@ -580,18 +616,26 @@ export function TilePainter({ config }: TilePainterProps) {
         const newMap = new Map(prev);
 
         // Add random noise if configured - select at most one noise tile
-        const material = config.materials.find(m => m.id === selectedMaterial);
+        const material = config.materials.find(
+          (m) => m.id === selectedMaterial
+        );
         const availableNoise = config.noise.filter(
           (noise) => noise.baseMaterial === selectedMaterial
         );
-        
+
         let selectedNoiseId: string | undefined;
-        if (material && availableNoise.length > 0 && material.noiseProbability > 0) {
+        if (
+          material &&
+          availableNoise.length > 0 &&
+          material.noiseProbability > 0
+        ) {
           const random = Math.random() * 100;
-          
+
           if (random < material.noiseProbability) {
             // Select one noise tile randomly from available options
-            const randomIndex = Math.floor(Math.random() * availableNoise.length);
+            const randomIndex = Math.floor(
+              Math.random() * availableNoise.length
+            );
             selectedNoiseId = availableNoise[randomIndex].id;
           }
         }
@@ -615,29 +659,37 @@ export function TilePainter({ config }: TilePainterProps) {
     if (isErasing) {
       setPaintedTiles((prev) => {
         const newMap = new Map(prev);
-        tileKeys.forEach(key => newMap.delete(key));
+        tileKeys.forEach((key) => newMap.delete(key));
         return recalculateAllBorders(newMap);
       });
     } else if (selectedMaterial) {
       setPaintedTiles((prev) => {
         const newMap = new Map(prev);
 
-        tileKeys.forEach(key => {
-          const [x, y] = key.split(',').map(Number);
-          
+        tileKeys.forEach((key) => {
+          const [x, y] = key.split(",").map(Number);
+
           // Add random noise if configured - select at most one noise tile per tile
-          const material = config.materials.find(m => m.id === selectedMaterial);
+          const material = config.materials.find(
+            (m) => m.id === selectedMaterial
+          );
           const availableNoise = config.noise.filter(
             (noise) => noise.baseMaterial === selectedMaterial
           );
-          
+
           let selectedNoiseId: string | undefined;
-          if (material && availableNoise.length > 0 && material.noiseProbability > 0) {
+          if (
+            material &&
+            availableNoise.length > 0 &&
+            material.noiseProbability > 0
+          ) {
             const random = Math.random() * 100;
-            
+
             if (random < material.noiseProbability) {
               // Select one noise tile randomly from available options
-              const randomIndex = Math.floor(Math.random() * availableNoise.length);
+              const randomIndex = Math.floor(
+                Math.random() * availableNoise.length
+              );
               selectedNoiseId = availableNoise[randomIndex].id;
             }
           }
@@ -787,77 +839,80 @@ export function TilePainter({ config }: TilePainterProps) {
 
     const dataStr = JSON.stringify(mapData, null, 2);
     const dataBlob = new Blob([dataStr], { type: "application/json" });
-    
+
     const link = document.createElement("a");
-    link.download = `${config.name}_map_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `${config.name}_map_${
+      new Date().toISOString().split("T")[0]
+    }.json`;
     link.href = URL.createObjectURL(dataBlob);
     link.click();
-    
+
     // Clean up the URL object
     URL.revokeObjectURL(link.href);
-    
+
     // Show success toast
-    showSuccess(
-      "Map Saved Successfully", 
-      `Map saved as ${link.download}`
-    );
+    showSuccess("Map Saved Successfully", `Map saved as ${link.download}`);
   };
 
   const loadMap = () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".json";
-    
+
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      
+
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
           const mapData = JSON.parse(event.target?.result as string);
-          
+
           // Validate that this map is for the same tileset
           if (mapData.configId !== config.id) {
             showError(
-              "Tileset Mismatch", 
+              "Tileset Mismatch",
               `This map was created for a different tileset (${mapData.configName}). Please load the correct tileset first.`
             );
             return;
           }
-          
+
           // Restore grid configuration
           setGridConfig(mapData.gridConfig);
-          
+
           // Restore painted tiles
           const restoredTiles = new Map<string, PaintedTile>();
-          mapData.tiles.forEach(({ key, tile }: { key: string; tile: PaintedTile }) => {
-            restoredTiles.set(key, tile);
-          });
-          
+          mapData.tiles.forEach(
+            ({ key, tile }: { key: string; tile: PaintedTile }) => {
+              restoredTiles.set(key, tile);
+            }
+          );
+
           setPaintedTiles(restoredTiles);
-          
+
           // Add to history
           const newHistory = [...history, restoredTiles];
           setHistory(newHistory);
           setHistoryIndex(newHistory.length - 1);
-          
+
           showSuccess(
-            "Map Loaded Successfully", 
-            `Loaded map from ${new Date(mapData.timestamp).toLocaleDateString()}`
+            "Map Loaded Successfully",
+            `Loaded map from ${new Date(
+              mapData.timestamp
+            ).toLocaleDateString()}`
           );
         } catch (error) {
           showError(
-            "Load Error", 
+            "Load Error",
             "Error loading map file. Please ensure it's a valid map file."
           );
           console.error("Error loading map:", error);
         }
       };
-      
+
       reader.readAsText(file);
     };
-    
+
     input.click();
   };
 
@@ -865,271 +920,276 @@ export function TilePainter({ config }: TilePainterProps) {
     <>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="p-6 space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Paint with {config.name}
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Click and drag to paint tiles on the canvas
-        </p>
-      </div>
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Paint with {config.name}
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Click and drag to paint tiles on the canvas
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Material Palette */}
-        <div className="space-y-4">
-          {/* Tool Selection */}
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Tools
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  setCurrentTool("brush");
-                  setIsErasing(false);
-                  setPreviewTiles(new Set());
-                }}
-                className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
-                  currentTool === "brush" && !isErasing
-                    ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
-                    : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                }`}
-              >
-                <Paintbrush className="w-4 h-4" />
-                <span className="text-sm font-medium">Brush</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setCurrentTool("rectangle");
-                  setIsErasing(false);
-                  setPreviewTiles(new Set());
-                }}
-                className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
-                  currentTool === "rectangle" && !isErasing
-                    ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
-                    : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                }`}
-              >
-                <Square className="w-4 h-4" />
-                <span className="text-sm font-medium">Rectangle</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setCurrentTool("circle");
-                  setIsErasing(false);
-                  setPreviewTiles(new Set());
-                }}
-                className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
-                  currentTool === "circle" && !isErasing
-                    ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
-                    : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                }`}
-              >
-                <Circle className="w-4 h-4" />
-                <span className="text-sm font-medium">Circle</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setCurrentTool("fill");
-                  setIsErasing(false);
-                  setPreviewTiles(new Set());
-                }}
-                className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
-                  currentTool === "fill" && !isErasing
-                    ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
-                    : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                }`}
-              >
-                <PaintBucket className="w-4 h-4" />
-                <span className="text-sm font-medium">Fill</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Materials
-            </h3>
-            <div className="space-y-2">
-              {config.materials.map((material) => (
-                <MaterialButton
-                  key={material.id}
-                  material={material}
-                  isSelected={selectedMaterial === material.id && !isErasing}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Material Palette */}
+          <div className="space-y-4">
+            {/* Tool Selection */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Tools
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button
                   onClick={() => {
-                    setSelectedMaterial(material.id);
+                    setCurrentTool("brush");
                     setIsErasing(false);
                     setPreviewTiles(new Set());
                   }}
-                  tilesetImage={tilesetImageRef.current}
-                />
-              ))}
+                  className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
+                    currentTool === "brush" && !isErasing
+                      ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
+                      : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  <Paintbrush className="w-4 h-4" />
+                  <span className="text-sm font-medium">Brush</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentTool("rectangle");
+                    setIsErasing(false);
+                    setPreviewTiles(new Set());
+                  }}
+                  className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
+                    currentTool === "rectangle" && !isErasing
+                      ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
+                      : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  <Square className="w-4 h-4" />
+                  <span className="text-sm font-medium">Rectangle</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentTool("circle");
+                    setIsErasing(false);
+                    setPreviewTiles(new Set());
+                  }}
+                  className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
+                    currentTool === "circle" && !isErasing
+                      ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
+                      : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  <Circle className="w-4 h-4" />
+                  <span className="text-sm font-medium">Circle</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentTool("fill");
+                    setIsErasing(false);
+                    setPreviewTiles(new Set());
+                  }}
+                  className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
+                    currentTool === "fill" && !isErasing
+                      ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
+                      : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  <PaintBucket className="w-4 h-4" />
+                  <span className="text-sm font-medium">Fill</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Materials
+              </h3>
+              <div className="space-y-2">
+                {config.materials.map((material) => (
+                  <MaterialButton
+                    key={material.id}
+                    material={material}
+                    isSelected={selectedMaterial === material.id && !isErasing}
+                    onClick={() => {
+                      setSelectedMaterial(material.id);
+                      setIsErasing(false);
+                      setPreviewTiles(new Set());
+                    }}
+                    tilesetImage={tilesetImageRef.current}
+                  />
+                ))}
+
+                <button
+                  onClick={() => {
+                    setIsErasing(!isErasing);
+                    setPreviewTiles(new Set());
+                  }}
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
+                    isErasing
+                      ? "bg-red-100 dark:bg-red-900/30 border-red-500"
+                      : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    Eraser
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Grid Controls */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Grid Size
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Width
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="100"
+                    value={gridConfig.width}
+                    onChange={(e) =>
+                      setGridConfig((prev) => ({
+                        ...prev,
+                        width: parseInt(e.target.value) || 20,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Height
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="100"
+                    value={gridConfig.height}
+                    onChange={(e) =>
+                      setGridConfig((prev) => ({
+                        ...prev,
+                        height: parseInt(e.target.value) || 15,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={undo}
+                  disabled={historyIndex <= 0}
+                  className="flex items-center justify-center space-x-1 px-3 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm rounded-lg transition-colors"
+                >
+                  <Undo className="w-4 h-4" />
+                  <span>Undo</span>
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={historyIndex >= history.length - 1}
+                  className="flex items-center justify-center space-x-1 px-3 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm rounded-lg transition-colors"
+                >
+                  <Redo className="w-4 h-4" />
+                  <span>Redo</span>
+                </button>
+              </div>
 
               <button
-                onClick={() => {
-                  setIsErasing(!isErasing);
-                  setPreviewTiles(new Set());
-                }}
-                className={`w-full flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
-                  isErasing
-                    ? "bg-red-100 dark:bg-red-900/30 border-red-500"
-                    : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                }`}
+                onClick={clearCanvas}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors"
               >
-                <Trash2 className="w-5 h-5 text-red-500" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  Eraser
+                <Trash2 className="w-4 h-4" />
+                <span>Clear All</span>
+              </button>
+
+              <button
+                onClick={exportImage}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export PNG</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={saveMap}
+                  className="flex items-center justify-center space-x-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Map</span>
+                </button>
+                <button
+                  onClick={loadMap}
+                  className="flex items-center justify-center space-x-1 px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded-lg transition-colors"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Load Map</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Canvas */}
+          <div className="lg:col-span-3">
+            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Canvas ({gridConfig.width} × {gridConfig.height})
+              </h3>
+              <div className="overflow-auto border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 p-4">
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={() => {
+                    handleMouseUp();
+                    setPreviewTiles(new Set());
+                  }}
+                  className="cursor-crosshair border border-gray-200 w-full max-w-full h-auto"
+                  style={{
+                    imageRendering: "pixelated",
+                    backgroundColor: "#f3f4f6",
+                    display: "block",
+                  }}
+                />
+              </div>
+              <div className="flex justify-between items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
+                <span>
+                  {isErasing
+                    ? `Erasing with ${currentTool}`
+                    : `${
+                        currentTool === "brush"
+                          ? "Painting"
+                          : currentTool === "rectangle"
+                          ? "Rectangle tool"
+                          : currentTool === "circle"
+                          ? "Circle tool"
+                          : "Fill tool"
+                      } with: ${
+                        config.materials.find((m) => m.id === selectedMaterial)
+                          ?.name || "None"
+                      }`}
                 </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Grid Controls */}
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Grid Size
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Width
-                </label>
-                <input
-                  type="number"
-                  min="5"
-                  max="100"
-                  value={gridConfig.width}
-                  onChange={(e) =>
-                    setGridConfig((prev) => ({
-                      ...prev,
-                      width: parseInt(e.target.value) || 20,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                />
+                <span>Tiles painted: {paintedTiles.size}</span>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Height
-                </label>
-                <input
-                  type="number"
-                  min="5"
-                  max="100"
-                  value={gridConfig.height}
-                  onChange={(e) =>
-                    setGridConfig((prev) => ({
-                      ...prev,
-                      height: parseInt(e.target.value) || 15,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={undo}
-                disabled={historyIndex <= 0}
-                className="flex items-center justify-center space-x-1 px-3 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm rounded-lg transition-colors"
-              >
-                <Undo className="w-4 h-4" />
-                <span>Undo</span>
-              </button>
-              <button
-                onClick={redo}
-                disabled={historyIndex >= history.length - 1}
-                className="flex items-center justify-center space-x-1 px-3 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm rounded-lg transition-colors"
-              >
-                <Redo className="w-4 h-4" />
-                <span>Redo</span>
-              </button>
-            </div>
-
-            <button
-              onClick={clearCanvas}
-              className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Clear All</span>
-            </button>
-
-            <button
-              onClick={exportImage}
-              className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export PNG</span>
-            </button>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={saveMap}
-                className="flex items-center justify-center space-x-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Map</span>
-              </button>
-              <button
-                onClick={loadMap}
-                className="flex items-center justify-center space-x-1 px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded-lg transition-colors"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Load Map</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Canvas */}
-        <div className="lg:col-span-3">
-          <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Canvas ({gridConfig.width} × {gridConfig.height})
-            </h3>
-            <div className="overflow-auto border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 p-4">
-              <canvas
-                ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={() => {
-                  handleMouseUp();
-                  setPreviewTiles(new Set());
-                }}
-                className="cursor-crosshair border border-gray-200 w-full max-w-full h-auto"
-                style={{
-                  imageRendering: "pixelated",
-                  backgroundColor: "#f3f4f6",
-                  display: "block",
-                }}
-              />
-            </div>
-            <div className="flex justify-between items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
-              <span>
-                {isErasing
-                  ? `Erasing with ${currentTool}`
-                  : `${currentTool === "brush" ? "Painting" : 
-                      currentTool === "rectangle" ? "Rectangle tool" :
-                      currentTool === "circle" ? "Circle tool" :
-                      "Fill tool"} with: ${
-                      config.materials.find((m) => m.id === selectedMaterial)
-                        ?.name || "None"
-                    }`}
-              </span>
-              <span>Tiles painted: {paintedTiles.size}</span>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </>
   );
 }
