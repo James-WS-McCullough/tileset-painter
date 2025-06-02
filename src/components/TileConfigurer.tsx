@@ -84,7 +84,6 @@ export function TileConfigurer({
     [key: string]: TileData | null;
   }>({});
   const [noiseMaterial, setNoiseMaterial] = useState<string>("");
-  const [noiseProbability, setNoiseProbability] = useState<number>(25);
   const [selectedNoiseTiles, setSelectedNoiseTiles] = useState<TileData[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -308,7 +307,6 @@ export function TileConfigurer({
       height: tile.height,
       type: "noise",
       baseMaterial: noiseMaterial,
-      probability: noiseProbability,
     }));
 
     const updatedConfig = {
@@ -318,6 +316,27 @@ export function TileConfigurer({
 
     onConfigChange(updatedConfig);
     setSelectedNoiseTiles([]);
+  };
+
+  const updateMaterialNoiseProbability = (materialId: string, probability: number) => {
+    const updatedMaterials = config.materials.map(material =>
+      material.id === materialId
+        ? { ...material, noiseProbability: probability }
+        : material
+    );
+
+    onConfigChange({
+      ...config,
+      materials: updatedMaterials,
+    });
+  };
+
+  const removeNoiseTile = (noiseId: string) => {
+    const updatedConfig = {
+      ...config,
+      noise: config.noise.filter(n => n.id !== noiseId),
+    };
+    onConfigChange(updatedConfig);
   };
 
   const addMaterial = () => {
@@ -331,6 +350,7 @@ export function TileConfigurer({
       name: materialName.trim(),
       tile: selectedTile,
       color: "#3b82f6", // Default blue color for UI purposes
+      noiseProbability: 0, // Default to no noise
     };
 
     const updatedConfig = {
@@ -774,170 +794,193 @@ export function TileConfigurer({
               </h3>
 
               {config.materials.length > 0 ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Base Material
-                    </label>
-                    <select
-                      value={noiseMaterial}
-                      onChange={(e) => setNoiseMaterial(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Select Base Material</option>
-                      {config.materials.map((material) => (
-                        <option key={material.id} value={material.id}>
-                          {material.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Noise Probability: {noiseProbability}%
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="100"
-                      value={noiseProbability}
-                      onChange={(e) =>
-                        setNoiseProbability(Number(e.target.value))
-                      }
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>1%</span>
-                      <span>50%</span>
-                      <span>100%</span>
-                    </div>
-                  </div>
-
-                  {noiseMaterial && (
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        Click on tiles in the tileset to select noise tiles for{" "}
-                        {
-                          config.materials.find((m) => m.id === noiseMaterial)
-                            ?.name
-                        }
-                        .
-                      </p>
-
-                      {selectedNoiseTiles.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Selected noise tiles: {selectedNoiseTiles.length}
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {selectedNoiseTiles.map((tile, index) => (
-                              <div
-                                key={index}
-                                className="w-8 h-8 border rounded overflow-hidden bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  setSelectedNoiseTiles((prev) =>
-                                    prev.filter((_, i) => i !== index)
-                                  );
-                                }}
-                                title="Click to remove"
-                              >
-                                {image && (
-                                  <canvas
-                                    width={tile.width}
-                                    height={tile.height}
-                                    className="w-full h-full"
-                                    style={{ imageRendering: "pixelated" }}
-                                    ref={(canvas) => {
-                                      if (canvas) {
-                                        const ctx = canvas.getContext(
-                                          "2d"
-                                        ) as ExtendedCanvasRenderingContext2D;
-                                        if (ctx) {
-                                          // Configure context for pixel-perfect rendering
-                                          ctx.imageSmoothingEnabled = false;
-                                          if (
-                                            ctx.webkitImageSmoothingEnabled !==
-                                            undefined
-                                          )
-                                            ctx.webkitImageSmoothingEnabled =
-                                              false;
-                                          if (
-                                            ctx.mozImageSmoothingEnabled !==
-                                            undefined
-                                          )
-                                            ctx.mozImageSmoothingEnabled =
-                                              false;
-                                          if (
-                                            ctx.msImageSmoothingEnabled !==
-                                            undefined
-                                          )
-                                            ctx.msImageSmoothingEnabled = false;
-
-                                          ctx.drawImage(
-                                            image,
-                                            tile.x,
-                                            tile.y,
-                                            tile.width,
-                                            tile.height,
-                                            0,
-                                            0,
-                                            tile.width,
-                                            tile.height
-                                          );
-                                        }
-                                      }
-                                    }}
-                                  />
-                                )}
-                              </div>
-                            ))}
+                <div className="space-y-6">
+                  {/* Material-based noise configuration */}
+                  {config.materials.map((material) => {
+                    const materialNoise = config.noise.filter(n => n.baseMaterial === material.id);
+                    
+                    return (
+                      <div key={material.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                            {material.name}
+                          </h4>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">
+                              {materialNoise.length} noise tiles
+                            </span>
                           </div>
-
-                          <button
-                            onClick={addNoiseTiles}
-                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span>Add Noise Tiles</span>
-                          </button>
                         </div>
-                      )}
-                    </div>
-                  )}
 
-                  {config.noise.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                        Configured Noise ({config.noise.length})
-                      </h4>
-                      <div className="space-y-1 max-h-24 overflow-y-auto">
-                        {Array.from(
-                          new Set(config.noise.map((n) => n.baseMaterial))
-                        ).map((materialId) => {
-                          const material = config.materials.find(
-                            (m) => m.id === materialId
-                          );
-                          const noiseCount = config.noise.filter(
-                            (n) => n.baseMaterial === materialId
-                          ).length;
-                          const avgProbability = Math.round(
-                            config.noise
-                              .filter((n) => n.baseMaterial === materialId)
-                              .reduce((sum, n) => sum + n.probability, 0) /
-                              noiseCount
-                          );
-                          return (
-                            <div
-                              key={materialId}
-                              className="text-xs text-gray-600 dark:text-gray-400"
-                            >
-                              {material?.name}: {noiseCount} tiles (
-                              {avgProbability}% avg)
+                        {/* Noise Probability Slider */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Noise Probability: {material.noiseProbability}%
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={material.noiseProbability}
+                            onChange={(e) => updateMaterialNoiseProbability(material.id, Number(e.target.value))}
+                            className="w-full"
+                          />
+                          <div className="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>0%</span>
+                            <span>50%</span>
+                            <span>100%</span>
+                          </div>
+                        </div>
+
+                        {/* Current Noise Tiles */}
+                        {materialNoise.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Current Noise Tiles:
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {materialNoise.map((noiseTile) => (
+                                <div
+                                  key={noiseTile.id}
+                                  className="relative w-8 h-8 border rounded overflow-hidden bg-gray-100 group cursor-pointer"
+                                  onClick={() => removeNoiseTile(noiseTile.id)}
+                                  title="Click to remove"
+                                >
+                                  {image && (
+                                    <canvas
+                                      width={32}
+                                      height={32}
+                                      className="w-full h-full"
+                                      style={{ imageRendering: "pixelated" }}
+                                      ref={(canvas) => {
+                                        if (canvas && image.complete) {
+                                          const ctx = canvas.getContext("2d") as ExtendedCanvasRenderingContext2D;
+                                          if (ctx) {
+                                            ctx.imageSmoothingEnabled = false;
+                                            if (ctx.webkitImageSmoothingEnabled !== undefined)
+                                              ctx.webkitImageSmoothingEnabled = false;
+                                            if (ctx.mozImageSmoothingEnabled !== undefined)
+                                              ctx.mozImageSmoothingEnabled = false;
+                                            if (ctx.msImageSmoothingEnabled !== undefined)
+                                              ctx.msImageSmoothingEnabled = false;
+
+                                            // Clear canvas first
+                                            ctx.clearRect(0, 0, 32, 32);
+                                            
+                                            // Draw the tile image scaled to 32x32
+                                            ctx.drawImage(
+                                              image,
+                                              noiseTile.x,
+                                              noiseTile.y,
+                                              noiseTile.width,
+                                              noiseTile.height,
+                                              0,
+                                              0,
+                                              32,
+                                              32
+                                            );
+                                          }
+                                        }
+                                      }}
+                                    />
+                                  )}
+                                  <div className="absolute inset-0 bg-red-500 bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                    <Trash2 className="w-3 h-3 text-white" />
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          );
-                        })}
+                          </div>
+                        )}
+
+                        {/* Add Noise Tiles Button */}
+                        <button
+                          onClick={() => {
+                            setNoiseMaterial(material.id);
+                            setSelectedNoiseTiles([]);
+                          }}
+                          className={`w-full flex items-center justify-center space-x-2 px-3 py-2 border-2 border-dashed rounded-lg font-medium transition-colors ${
+                            noiseMaterial === material.id
+                              ? 'border-purple-400 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-900/20 dark:text-purple-300'
+                              : 'border-gray-300 text-gray-600 hover:border-purple-400 hover:text-purple-600 dark:border-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>
+                            {noiseMaterial === material.id ? 'Click tiles to add noise' : 'Add Noise Tiles'}
+                          </span>
+                        </button>
                       </div>
+                    );
+                  })}
+
+                  {/* Current Selection Display */}
+                  {noiseMaterial && selectedNoiseTiles.length > 0 && (
+                    <div className="border border-purple-200 dark:border-purple-700 rounded-lg p-4 bg-purple-50 dark:bg-purple-900/20">
+                      <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2">
+                        Selected noise tiles for{" "}
+                        {config.materials.find((m) => m.id === noiseMaterial)?.name}:
+                      </p>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {selectedNoiseTiles.map((tile, index) => (
+                          <div
+                            key={index}
+                            className="w-8 h-8 border rounded overflow-hidden bg-gray-100 cursor-pointer"
+                            onClick={() => {
+                              setSelectedNoiseTiles((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              );
+                            }}
+                            title="Click to remove"
+                          >
+                            {image && (
+                              <canvas
+                                width={32}
+                                height={32}
+                                className="w-full h-full"
+                                style={{ imageRendering: "pixelated" }}
+                                ref={(canvas) => {
+                                  if (canvas && image.complete) {
+                                    const ctx = canvas.getContext("2d") as ExtendedCanvasRenderingContext2D;
+                                    if (ctx) {
+                                      ctx.imageSmoothingEnabled = false;
+                                      if (ctx.webkitImageSmoothingEnabled !== undefined)
+                                        ctx.webkitImageSmoothingEnabled = false;
+                                      if (ctx.mozImageSmoothingEnabled !== undefined)
+                                        ctx.mozImageSmoothingEnabled = false;
+                                      if (ctx.msImageSmoothingEnabled !== undefined)
+                                        ctx.msImageSmoothingEnabled = false;
+
+                                      // Clear canvas first
+                                      ctx.clearRect(0, 0, 32, 32);
+                                      
+                                      // Draw the tile image scaled to 32x32
+                                      ctx.drawImage(
+                                        image,
+                                        tile.x,
+                                        tile.y,
+                                        tile.width,
+                                        tile.height,
+                                        0,
+                                        0,
+                                        32,
+                                        32
+                                      );
+                                    }
+                                  }
+                                }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={addNoiseTiles}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add {selectedNoiseTiles.length} Noise Tiles</span>
+                      </button>
                     </div>
                   )}
                 </div>

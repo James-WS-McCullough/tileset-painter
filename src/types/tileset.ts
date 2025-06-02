@@ -17,6 +17,7 @@ export interface BaseMaterial {
   name: string;
   tile: TileData;
   color: string; // For visual identification
+  noiseProbability: number; // 0-100 chance of getting any noise
 }
 
 export interface BorderTile extends TileData {
@@ -27,7 +28,6 @@ export interface BorderTile extends TileData {
 
 export interface NoiseTile extends TileData {
   baseMaterial: string; // Material ID this noise applies to
-  probability: number; // 0-100 chance of appearing
 }
 
 export interface TilesetConfig {
