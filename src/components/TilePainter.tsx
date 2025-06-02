@@ -135,9 +135,9 @@ export function TilePainter({ config }: TilePainterProps) {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
-    // Set canvas display size to maintain pixel-perfect rendering
-    canvas.style.width = `${Math.max(canvasWidth, 400)}px`;
-    canvas.style.height = `${Math.max(canvasHeight, 300)}px`;
+    // Remove explicit style sizing - let CSS handle the display scaling
+    canvas.style.width = '';
+    canvas.style.height = '';
 
     // Clear canvas with background
     ctx.fillStyle = "#f3f4f6";
@@ -689,7 +689,7 @@ export function TilePainter({ config }: TilePainterProps) {
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                className="cursor-crosshair border border-gray-200"
+                className="cursor-crosshair border border-gray-200 w-full max-w-full h-auto"
                 style={{
                   imageRendering: "pixelated",
                   backgroundColor: "#f3f4f6",
