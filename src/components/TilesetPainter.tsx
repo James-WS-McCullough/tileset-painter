@@ -6,14 +6,7 @@ import { TileConfigurer } from "./TileConfigurer";
 import { TilePainter } from "./TilePainter";
 import { ConfigManager } from "./ConfigManager";
 import { TilesetConfig, AppMode } from "@/types/tileset";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Upload,
-  Settings,
-  Paintbrush,
-  Save,
-} from "lucide-react";
+import { ChevronRight, Upload, Settings, Paintbrush } from "lucide-react";
 
 export function TilesetPainter() {
   const [mode, setMode] = useState<AppMode>("upload");
@@ -33,7 +26,13 @@ export function TilesetPainter() {
 
   const handleConfigLoaded = useCallback((config: TilesetConfig) => {
     setTilesetConfig(config);
-    setMode("configure");
+    // If the configuration has materials defined, go straight to paint mode
+    // Otherwise, go to configure mode for setup
+    if (config.materials.length > 0) {
+      setMode("paint");
+    } else {
+      setMode("configure");
+    }
   }, []);
 
   const renderModeIcon = (currentMode: AppMode) => {
@@ -125,7 +124,10 @@ export function TilesetPainter() {
       {/* Main Content */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         {mode === "upload" && (
-          <TilesetUploader onTilesetUploaded={handleTilesetUploaded} />
+          <TilesetUploader
+            onTilesetUploaded={handleTilesetUploaded}
+            onConfigLoaded={handleConfigLoaded}
+          />
         )}
 
         {mode === "configure" && tilesetConfig && (

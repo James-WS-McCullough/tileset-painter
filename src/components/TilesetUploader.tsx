@@ -6,9 +6,13 @@ import { Upload, Image as ImageIcon, Grid } from "lucide-react";
 
 interface TilesetUploaderProps {
   onTilesetUploaded: (config: TilesetConfig) => void;
+  onConfigLoaded?: (config: TilesetConfig) => void;
 }
 
-export function TilesetUploader({ onTilesetUploaded }: TilesetUploaderProps) {
+export function TilesetUploader({
+  onTilesetUploaded,
+  onConfigLoaded,
+}: TilesetUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{
@@ -18,6 +22,34 @@ export function TilesetUploader({ onTilesetUploaded }: TilesetUploaderProps) {
   const [tileSize, setTileSize] = useState({ width: 32, height: 32 });
   const [tilesetName, setTilesetName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const configInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload an image file");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        setUploadedImage(imageUrl);
+
+        // Get image dimensions
+        const img = new Image();
+        img.onload = () => {
+          setImageSize({ width: img.width, height: img.height });
+          if (!tilesetName) {
+            setTilesetName(file.name.replace(/\.[^/.]+$/, ""));
+          }
+        };
+        img.src = imageUrl;
+      };
+      reader.readAsDataURL(file);
+    },
+    [tilesetName]
+  );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -29,46 +61,28 @@ export function TilesetUploader({ onTilesetUploaded }: TilesetUploaderProps) {
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
-  }, []);
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    },
+    [handleFile]
+  );
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
-    }
-  }, []);
-
-  const handleFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageUrl = e.target?.result as string;
-      setUploadedImage(imageUrl);
-
-      // Get image dimensions
-      const img = new Image();
-      img.onload = () => {
-        setImageSize({ width: img.width, height: img.height });
-        if (!tilesetName) {
-          setTilesetName(file.name.replace(/\.[^/.]+$/, ""));
-        }
-      };
-      img.src = imageUrl;
-    };
-    reader.readAsDataURL(file);
-  };
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      if (e.target.files && e.target.files[0]) {
+        handleFile(e.target.files[0]);
+      }
+    },
+    [handleFile]
+  );
 
   const handleSubmit = () => {
     if (!uploadedImage || !imageSize || !tilesetName.trim()) {
@@ -89,6 +103,50 @@ export function TilesetUploader({ onTilesetUploaded }: TilesetUploaderProps) {
     onTilesetUploaded(config);
   };
 
+  const loadConfiguration = () => {
+    configInputRef.current?.click();
+  };
+
+  const handleConfigLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const configData = JSON.parse(
+          e.target?.result as string
+        ) as TilesetConfig;
+
+        // Validate the config structure
+        if (
+          !configData.id ||
+          !configData.name ||
+          !configData.tileSize ||
+          !Array.isArray(configData.materials) ||
+          !configData.imageUrl
+        ) {
+          alert("Invalid configuration file format or missing image data");
+          return;
+        }
+
+        // Load the configuration directly if onConfigLoaded is provided
+        if (onConfigLoaded) {
+          onConfigLoaded(configData);
+        } else {
+          // Fallback: just load the tileset part
+          onTilesetUploaded(configData);
+        }
+      } catch (error) {
+        alert("Error loading configuration file: " + (error as Error).message);
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset the input
+    event.target.value = "";
+  };
+
   const tilesPerRow = Math.floor(imageSize?.width || 0 / tileSize.width);
   const tilesPerColumn = Math.floor(imageSize?.height || 0 / tileSize.height);
   const totalTiles = tilesPerRow * tilesPerColumn;
@@ -100,8 +158,42 @@ export function TilesetUploader({ onTilesetUploaded }: TilesetUploaderProps) {
           Upload Your Tileset
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Upload an image file and configure the tile dimensions
+          Upload an image file and configure the tile dimensions, or load a
+          saved configuration
         </p>
+      </div>
+
+      {/* Load Configuration Option */}
+      <div className="text-center">
+        <input
+          ref={configInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleConfigLoad}
+          className="hidden"
+        />
+        <button
+          onClick={loadConfiguration}
+          className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+        >
+          <Upload className="w-4 h-4" />
+          <span>Load Saved Configuration</span>
+        </button>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Load a complete tileset configuration with all materials, borders, and
+          noise settings
+        </p>
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
+            OR
+          </span>
+        </div>
       </div>
 
       {/* File Upload Area */}
