@@ -98,6 +98,7 @@ export function TilesetUploader({
       materials: [],
       borders: [],
       noise: [],
+      customTiles: [],
     };
 
     onTilesetUploaded(config);

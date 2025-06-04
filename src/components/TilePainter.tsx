@@ -6,6 +6,8 @@ import {
   PaintedTile,
   GridConfig,
   BaseMaterial,
+  CustomTileSelection,
+  CustomPaintedTile,
 } from "@/types/tileset";
 import {
   Download,
@@ -18,10 +20,14 @@ import {
   PaintBucket,
   Save,
   Upload,
+  Palette,
+  Grid,
 } from "lucide-react";
 import { useToasts, ToastContainer } from "./Toast";
+import { TilesetViewer } from "./TilesetViewer";
 
 type PaintingTool = "brush" | "rectangle" | "circle" | "fill";
+type PaintingMode = "materials" | "customTiles";
 
 // Extended canvas context interface for pixel-perfect rendering
 interface ExtendedCanvasRenderingContext2D extends CanvasRenderingContext2D {
@@ -115,9 +121,16 @@ export function TilePainter({ config }: TilePainterProps) {
   const [paintedTiles, setPaintedTiles] = useState<Map<string, PaintedTile>>(
     new Map()
   );
+  const [customPaintedTiles, setCustomPaintedTiles] = useState<
+    Map<string, CustomPaintedTile>
+  >(new Map());
   const [selectedMaterial, setSelectedMaterial] = useState<string>(
     config.materials[0]?.id || ""
   );
+  const [selectedCustomTile, setSelectedCustomTile] = useState<string | null>(
+    null
+  );
+  const [paintingMode, setPaintingMode] = useState<PaintingMode>("materials");
   const [isPainting, setIsPainting] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [currentTool, setCurrentTool] = useState<PaintingTool>("brush");
@@ -130,9 +143,56 @@ export function TilePainter({ config }: TilePainterProps) {
     new Map(),
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [configWithCustomTiles, setConfigWithCustomTiles] =
+    useState<TilesetConfig>(config);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tilesetImageRef = useRef<HTMLImageElement>(null);
+
+  // Custom tile management functions
+  const handleCustomTileAdded = useCallback(
+    (customTile: CustomTileSelection) => {
+      setConfigWithCustomTiles((prev) => ({
+        ...prev,
+        customTiles: [...prev.customTiles, customTile],
+      }));
+    },
+    []
+  );
+
+  const handleCustomTileRemoved = useCallback(
+    (customTileId: string) => {
+      setConfigWithCustomTiles((prev) => ({
+        ...prev,
+        customTiles: prev.customTiles.filter((ct) => ct.id !== customTileId),
+      }));
+      if (selectedCustomTile === customTileId) {
+        setSelectedCustomTile(null);
+      }
+      // Remove any painted custom tiles of this type
+      setCustomPaintedTiles((prev) => {
+        const newMap = new Map(prev);
+        for (const [key, tile] of newMap.entries()) {
+          if (tile.customTileId === customTileId) {
+            newMap.delete(key);
+          }
+        }
+        return newMap;
+      });
+    },
+    [selectedCustomTile]
+  );
+
+  const handleCustomTileSelected = useCallback(
+    (customTileId: string | null) => {
+      setSelectedCustomTile(customTileId);
+      if (customTileId) {
+        setPaintingMode("customTiles");
+        setIsErasing(false);
+      }
+    },
+    []
+  );
 
   const redrawCanvas = useCallback(() => {
     if (!canvasRef.current) return;
@@ -245,29 +305,126 @@ export function TilePainter({ config }: TilePainterProps) {
       }
     });
 
-    // Draw preview tiles for rectangle and circle tools
-    if (previewTiles.size > 0 && !isErasing && selectedMaterial) {
-      const material = config.materials.find((m) => m.id === selectedMaterial);
-      if (material) {
-        ctx.globalAlpha = 0.6; // Make preview semi-transparent
+    // Draw custom painted tiles
+    customPaintedTiles.forEach((customTile) => {
+      const customTileConfig = configWithCustomTiles.customTiles.find(
+        (ct) => ct.id === customTile.customTileId
+      );
+      if (!customTileConfig) return;
 
+      // Calculate source position in tileset
+      const sourceX =
+        (customTileConfig.sourceX + (customTile.offsetX || 0)) *
+        config.tileSize.width;
+      const sourceY =
+        (customTileConfig.sourceY + (customTile.offsetY || 0)) *
+        config.tileSize.height;
+
+      // Calculate destination position on canvas
+      const destX = Math.round(customTile.x * gridConfig.tileSize.width);
+      const destY = Math.round(customTile.y * gridConfig.tileSize.height);
+
+      ctx.drawImage(
+        tilesetImageRef.current!,
+        Math.round(sourceX),
+        Math.round(sourceY),
+        Math.round(config.tileSize.width),
+        Math.round(config.tileSize.height),
+        destX,
+        destY,
+        Math.round(gridConfig.tileSize.width),
+        Math.round(gridConfig.tileSize.height)
+      );
+    });
+
+    // Draw preview tiles for rectangle and circle tools
+    if (previewTiles.size > 0) {
+      if (isErasing) {
+        // Show eraser preview with red overlay
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
         previewTiles.forEach((tileKey) => {
           const [x, y] = tileKey.split(",").map(Number);
           const destX = Math.round(x * gridConfig.tileSize.width);
           const destY = Math.round(y * gridConfig.tileSize.height);
-
-          ctx.drawImage(
-            tilesetImageRef.current!,
-            Math.round(material.tile.x),
-            Math.round(material.tile.y),
-            Math.round(material.tile.width),
-            Math.round(material.tile.height),
-            destX,
-            destY,
-            Math.round(gridConfig.tileSize.width),
-            Math.round(gridConfig.tileSize.height)
-          );
+          ctx.fillRect(destX, destY, Math.round(gridConfig.tileSize.width), Math.round(gridConfig.tileSize.height));
         });
+        ctx.globalAlpha = 1.0;
+      } else {
+        // Show normal tile preview
+        ctx.globalAlpha = 0.6; // Make preview semi-transparent
+
+        if (paintingMode === "materials" && selectedMaterial) {
+          const material = config.materials.find(
+            (m) => m.id === selectedMaterial
+          );
+          if (material) {
+            previewTiles.forEach((tileKey) => {
+              const [x, y] = tileKey.split(",").map(Number);
+              const destX = Math.round(x * gridConfig.tileSize.width);
+              const destY = Math.round(y * gridConfig.tileSize.height);
+
+              ctx.drawImage(
+                tilesetImageRef.current!,
+                Math.round(material.tile.x),
+                Math.round(material.tile.y),
+                Math.round(material.tile.width),
+                Math.round(material.tile.height),
+                destX,
+                destY,
+                Math.round(gridConfig.tileSize.width),
+                Math.round(gridConfig.tileSize.height)
+              );
+            });
+          }
+        } else if (paintingMode === "customTiles" && selectedCustomTile) {
+          const customTileConfig = configWithCustomTiles.customTiles.find(
+            (ct) => ct.id === selectedCustomTile
+          );
+          if (customTileConfig && drawingStart) {
+            previewTiles.forEach((tileKey) => {
+              const [x, y] = tileKey.split(",").map(Number);
+
+              // Calculate loop offset based on distance from drawing start
+              const offsetFromStartX = x - drawingStart.x;
+              const offsetFromStartY = y - drawingStart.y;
+              const loopedOffsetX =
+                offsetFromStartX % customTileConfig.sourceWidth;
+              const loopedOffsetY =
+                offsetFromStartY % customTileConfig.sourceHeight;
+
+              // Handle negative modulo
+              const finalOffsetX =
+                loopedOffsetX < 0
+                  ? customTileConfig.sourceWidth + loopedOffsetX
+                  : loopedOffsetX;
+              const finalOffsetY =
+                loopedOffsetY < 0
+                  ? customTileConfig.sourceHeight + loopedOffsetY
+                  : loopedOffsetY;
+
+              const sourceX =
+                (customTileConfig.sourceX + finalOffsetX) * config.tileSize.width;
+              const sourceY =
+                (customTileConfig.sourceY + finalOffsetY) *
+                config.tileSize.height;
+              const destX = Math.round(x * gridConfig.tileSize.width);
+              const destY = Math.round(y * gridConfig.tileSize.height);
+
+              ctx.drawImage(
+                tilesetImageRef.current!,
+                Math.round(sourceX),
+                Math.round(sourceY),
+                Math.round(config.tileSize.width),
+                Math.round(config.tileSize.height),
+                destX,
+                destY,
+                Math.round(gridConfig.tileSize.width),
+                Math.round(gridConfig.tileSize.height)
+              );
+            });
+          }
+        }
 
         ctx.globalAlpha = 1.0; // Reset opacity
       }
@@ -275,10 +432,15 @@ export function TilePainter({ config }: TilePainterProps) {
   }, [
     gridConfig,
     paintedTiles,
+    customPaintedTiles,
     config,
+    configWithCustomTiles.customTiles,
     previewTiles,
     isErasing,
     selectedMaterial,
+    paintingMode,
+    selectedCustomTile,
+    drawingStart,
   ]);
 
   // Load tileset image
@@ -605,13 +767,25 @@ export function TilePainter({ config }: TilePainterProps) {
     const key = `${x},${y}`;
 
     if (isErasing) {
+      // Remove both regular and custom painted tiles
       setPaintedTiles((prev) => {
         const newMap = new Map(prev);
         newMap.delete(key);
-        // Apply global border recalculation after erasing
         return recalculateAllBorders(newMap);
       });
-    } else if (selectedMaterial) {
+      setCustomPaintedTiles((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(key);
+        return newMap;
+      });
+    } else if (paintingMode === "materials" && selectedMaterial) {
+      // Remove any custom tile at this position first
+      setCustomPaintedTiles((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(key);
+        return newMap;
+      });
+
       setPaintedTiles((prev) => {
         const newMap = new Map(prev);
 
@@ -652,17 +826,66 @@ export function TilePainter({ config }: TilePainterProps) {
         // Apply global border recalculation after adding new tile
         return recalculateAllBorders(newMap);
       });
+    } else if (paintingMode === "customTiles" && selectedCustomTile) {
+      const customTileConfig = configWithCustomTiles.customTiles.find(
+        (ct) => ct.id === selectedCustomTile
+      );
+      if (!customTileConfig) return;
+
+      // For brush tool, place the complete custom tile group with top-left at clicked position
+      setCustomPaintedTiles((prev) => {
+        const newMap = new Map(prev);
+
+        // Don't remove existing custom tiles - allow overlaying
+        // Just add the new custom tile group on top
+
+        // Add the complete custom tile group
+        for (
+          let offsetY = 0;
+          offsetY < customTileConfig.sourceHeight;
+          offsetY++
+        ) {
+          for (
+            let offsetX = 0;
+            offsetX < customTileConfig.sourceWidth;
+            offsetX++
+          ) {
+            const tileX = x + offsetX;
+            const tileY = y + offsetY;
+            if (tileX < gridConfig.width && tileY < gridConfig.height) {
+              const customPaintedTile: CustomPaintedTile = {
+                x: tileX,
+                y: tileY,
+                customTileId: selectedCustomTile,
+                offsetX,
+                offsetY,
+              };
+              newMap.set(`${tileX},${tileY}`, customPaintedTile);
+            }
+          }
+        }
+
+        return newMap;
+      });
     }
   };
 
   const paintMultipleTiles = (tileKeys: string[]) => {
     if (isErasing) {
-      setPaintedTiles((prev) => {
-        const newMap = new Map(prev);
-        tileKeys.forEach((key) => newMap.delete(key));
-        return recalculateAllBorders(newMap);
-      });
-    } else if (selectedMaterial) {
+      if (paintingMode === "materials") {
+        setPaintedTiles((prev) => {
+          const newMap = new Map(prev);
+          tileKeys.forEach((key) => newMap.delete(key));
+          return recalculateAllBorders(newMap);
+        });
+      } else if (paintingMode === "customTiles") {
+        setCustomPaintedTiles((prev) => {
+          const newMap = new Map(prev);
+          tileKeys.forEach((key) => newMap.delete(key));
+          return newMap;
+        });
+      }
+    } else if (paintingMode === "materials" && selectedMaterial) {
       setPaintedTiles((prev) => {
         const newMap = new Map(prev);
 
@@ -705,6 +928,58 @@ export function TilePainter({ config }: TilePainterProps) {
 
         return recalculateAllBorders(newMap);
       });
+    } else if (paintingMode === "customTiles" && selectedCustomTile) {
+      const customTileConfig = configWithCustomTiles.customTiles.find(
+        (ct) => ct.id === selectedCustomTile
+      );
+      if (!customTileConfig) return;
+
+      // Custom tiles now overlay existing tiles instead of replacing them
+      setCustomPaintedTiles((prev) => {
+        const newMap = new Map(prev);
+
+        tileKeys.forEach((key) => {
+          const [x, y] = key.split(",").map(Number);
+
+          let loopedOffsetX, loopedOffsetY;
+
+          if (drawingStart) {
+            // Calculate loop offset based on distance from drawing start
+            const offsetFromStartX = x - drawingStart.x;
+            const offsetFromStartY = y - drawingStart.y;
+            const rawOffsetX = offsetFromStartX % customTileConfig.sourceWidth;
+            const rawOffsetY = offsetFromStartY % customTileConfig.sourceHeight;
+
+            // Handle negative modulo
+            loopedOffsetX =
+              rawOffsetX < 0
+                ? customTileConfig.sourceWidth + rawOffsetX
+                : rawOffsetX;
+            loopedOffsetY =
+              rawOffsetY < 0
+                ? customTileConfig.sourceHeight + rawOffsetY
+                : rawOffsetY;
+          } else {
+            // Fallback to absolute position if no drawing start
+            loopedOffsetX = x % customTileConfig.sourceWidth;
+            loopedOffsetY = y % customTileConfig.sourceHeight;
+          }
+
+          // Don't remove existing custom tiles - allow overlaying
+
+          // Add the new custom tile with looped positioning
+          const customPaintedTile: CustomPaintedTile = {
+            x,
+            y,
+            customTileId: selectedCustomTile,
+            offsetX: loopedOffsetX,
+            offsetY: loopedOffsetY,
+          };
+          newMap.set(key, customPaintedTile);
+        });
+
+        return newMap;
+      });
     }
   };
 
@@ -713,6 +988,10 @@ export function TilePainter({ config }: TilePainterProps) {
     if (!pos) return;
 
     setIsPainting(true);
+    
+    // Set erasing mode based on right-click
+    const rightClick = e.button === 2;
+    setIsErasing(rightClick);
 
     switch (currentTool) {
       case "brush":
@@ -792,6 +1071,7 @@ export function TilePainter({ config }: TilePainterProps) {
       }
     }
     setIsPainting(false);
+    setIsErasing(false); // Reset erasing state when mouse is released
   };
 
   const clearCanvas = () => {
@@ -834,6 +1114,11 @@ export function TilePainter({ config }: TilePainterProps) {
         key,
         tile,
       })),
+      customTiles: configWithCustomTiles.customTiles,
+      customPaintedTiles: Array.from(customPaintedTiles.entries()).map(([key, tile]) => ({
+        key,
+        tile,
+      })),
       timestamp: new Date().toISOString(),
     };
 
@@ -851,7 +1136,10 @@ export function TilePainter({ config }: TilePainterProps) {
     URL.revokeObjectURL(link.href);
 
     // Show success toast
-    showSuccess("Map Saved Successfully", `Map saved as ${link.download}`);
+    showSuccess(
+      "Map Saved Successfully", 
+      `Map saved as ${link.download}${configWithCustomTiles.customTiles.length > 0 ? ` including ${configWithCustomTiles.customTiles.length} custom tile groups` : ""}`
+    );
   };
 
   const loadMap = () => {
@@ -890,6 +1178,40 @@ export function TilePainter({ config }: TilePainterProps) {
 
           setPaintedTiles(restoredTiles);
 
+          // Restore custom tiles configuration if present
+          if (mapData.customTiles) {
+            setConfigWithCustomTiles((prev) => ({
+              ...prev,
+              customTiles: mapData.customTiles,
+            }));
+            
+            // Clear selected custom tile if it doesn't exist in loaded data
+            if (selectedCustomTile && !mapData.customTiles.some((ct: CustomTileSelection) => ct.id === selectedCustomTile)) {
+              setSelectedCustomTile(null);
+            }
+          } else {
+            // Clear custom tiles configuration if none in saved data
+            setConfigWithCustomTiles((prev) => ({
+              ...prev,
+              customTiles: [],
+            }));
+            setSelectedCustomTile(null);
+          }
+
+          // Restore custom painted tiles if present
+          if (mapData.customPaintedTiles) {
+            const restoredCustomTiles = new Map<string, CustomPaintedTile>();
+            mapData.customPaintedTiles.forEach(
+              ({ key, tile }: { key: string; tile: CustomPaintedTile }) => {
+                restoredCustomTiles.set(key, tile);
+              }
+            );
+            setCustomPaintedTiles(restoredCustomTiles);
+          } else {
+            // Clear custom painted tiles if none in saved data
+            setCustomPaintedTiles(new Map());
+          }
+
           // Add to history
           const newHistory = [...history, restoredTiles];
           setHistory(newHistory);
@@ -899,7 +1221,7 @@ export function TilePainter({ config }: TilePainterProps) {
             "Map Loaded Successfully",
             `Loaded map from ${new Date(
               mapData.timestamp
-            ).toLocaleDateString()}`
+            ).toLocaleDateString()}${mapData.customTiles ? ` with ${mapData.customTiles.length} custom tile groups` : ""}`
           );
         } catch (error) {
           showError(
@@ -914,6 +1236,10 @@ export function TilePainter({ config }: TilePainterProps) {
     };
 
     input.click();
+  };
+
+  const handleRightClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent browser context menu
   };
 
   return (
@@ -1004,43 +1330,102 @@ export function TilePainter({ config }: TilePainterProps) {
               </div>
             </div>
 
+            {/* Painting Mode Switcher */}
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Materials
+                Painting Mode
               </h3>
-              <div className="space-y-2">
-                {config.materials.map((material) => (
-                  <MaterialButton
-                    key={material.id}
-                    material={material}
-                    isSelected={selectedMaterial === material.id && !isErasing}
-                    onClick={() => {
-                      setSelectedMaterial(material.id);
-                      setIsErasing(false);
-                      setPreviewTiles(new Set());
-                    }}
-                    tilesetImage={tilesetImageRef.current}
-                  />
-                ))}
-
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => {
-                    setIsErasing(!isErasing);
+                    setPaintingMode("materials");
+                    setSelectedCustomTile(null);
                     setPreviewTiles(new Set());
                   }}
-                  className={`w-full flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
-                    isErasing
-                      ? "bg-red-100 dark:bg-red-900/30 border-red-500"
+                  className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
+                    paintingMode === "materials"
+                      ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
                       : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                   }`}
                 >
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    Eraser
-                  </span>
+                  <Palette className="w-4 h-4" />
+                  <span className="text-sm font-medium">Materials</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setPaintingMode("customTiles");
+                    setSelectedMaterial("");
+                    setIsErasing(false);
+                    setPreviewTiles(new Set());
+                  }}
+                  className={`flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors ${
+                    paintingMode === "customTiles"
+                      ? "bg-blue-100 dark:bg-blue-900/30 border-blue-500"
+                      : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  <Grid className="w-4 h-4" />
+                  <span className="text-sm font-medium">Custom Tiles</span>
                 </button>
               </div>
             </div>
+
+            {/* Materials Section */}
+            {paintingMode === "materials" && (
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Materials
+                </h3>
+                <div className="space-y-2">
+                  {config.materials.map((material) => (
+                    <MaterialButton
+                      key={material.id}
+                      material={material}
+                      isSelected={
+                        selectedMaterial === material.id && !isErasing
+                      }
+                      onClick={() => {
+                        setSelectedMaterial(material.id);
+                        setIsErasing(false);
+                        setPreviewTiles(new Set());
+                      }}
+                      tilesetImage={tilesetImageRef.current}
+                    />
+                  ))}
+
+                  <button
+                    onClick={() => {
+                      setIsErasing(!isErasing);
+                      setPreviewTiles(new Set());
+                    }}
+                    className={`w-full flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
+                      isErasing
+                        ? "bg-red-100 dark:bg-red-900/30 border-red-500"
+                        : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    <Trash2 className="w-5 h-5 text-red-500" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Eraser
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Custom Tiles Section */}
+            {paintingMode === "customTiles" && (
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <TilesetViewer
+                  config={configWithCustomTiles}
+                  onCustomTileAdded={handleCustomTileAdded}
+                  onCustomTileRemoved={handleCustomTileRemoved}
+                  selectedCustomTile={selectedCustomTile}
+                  onCustomTileSelected={handleCustomTileSelected}
+                />
+              </div>
+            )}
 
             {/* Grid Controls */}
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -1155,9 +1540,11 @@ export function TilePainter({ config }: TilePainterProps) {
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
+                  onContextMenu={handleRightClick}
                   onMouseLeave={() => {
                     handleMouseUp();
                     setPreviewTiles(new Set());
+                    setIsErasing(false);
                   }}
                   className="cursor-crosshair border border-gray-200 w-full max-w-full h-auto"
                   style={{
@@ -1180,11 +1567,32 @@ export function TilePainter({ config }: TilePainterProps) {
                           ? "Circle tool"
                           : "Fill tool"
                       } with: ${
-                        config.materials.find((m) => m.id === selectedMaterial)
-                          ?.name || "None"
+                        paintingMode === "materials"
+                          ? config.materials.find(
+                              (m) => m.id === selectedMaterial
+                            )?.name || "None"
+                          : paintingMode === "customTiles" && selectedCustomTile
+                          ? (() => {
+                              const customTile =
+                                configWithCustomTiles.customTiles.find(
+                                  (ct) => ct.id === selectedCustomTile
+                                );
+                              if (customTile) {
+                                const index =
+                                  configWithCustomTiles.customTiles.indexOf(
+                                    customTile
+                                  );
+                                return `Group ${index + 1}`;
+                              }
+                              return "None";
+                            })()
+                          : "None"
                       }`}
                 </span>
-                <span>Tiles painted: {paintedTiles.size}</span>
+                <span>
+                  Materials: {paintedTiles.size} | Custom:{" "}
+                  {customPaintedTiles.size}
+                </span>
               </div>
             </div>
           </div>

@@ -41,6 +41,7 @@ export interface TilesetConfig {
   materials: BaseMaterial[];
   borders: BorderTile[];
   noise: NoiseTile[];
+  customTiles: CustomTileSelection[];
 }
 
 export interface PaintedTile {
@@ -58,6 +59,23 @@ export interface GridConfig {
     width: number;
     height: number;
   };
+}
+
+export interface CustomTileSelection {
+  id: string;
+  sourceX: number; // X position in tileset grid
+  sourceY: number; // Y position in tileset grid
+  sourceWidth: number; // Width in tiles
+  sourceHeight: number; // Height in tiles
+  color: string; // For visual identification
+}
+
+export interface CustomPaintedTile {
+  x: number;
+  y: number;
+  customTileId: string;
+  offsetX?: number; // Offset within the custom tile selection
+  offsetY?: number; // Offset within the custom tile selection
 }
 
 export type AppMode = "upload" | "configure" | "paint";
